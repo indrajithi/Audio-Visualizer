@@ -1,15 +1,35 @@
-//
+/* 
+ Compile: 
+ Without SFML: g++ -std=gnu++11 draw.cpp  -L /home/username/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL ./common/shader_utils.o -o draw
 
-//version 0.1
-
+ With SFML:
+ l1f3@>prj$ g++ -std=c++11 -c draw.cpp
+ l1f3@>prj$ g++ -std=gnu++11 draw.o  -L /home/username/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ./common/shader_utils.o -o draw 
+ l1f3@>prj$ ./draw 
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
+#include <SFML/Audio.hpp>
+#include <unistd.h>
 
 #include <GL/glew.h>
 #include <GL/glut.h>
 
 #include "common/shader_utils.h"
+
+#include "aquila/global.h"
+#include "aquila/source/WaveFile.h"
+#include <algorithm>
+#include <cstdlib>
+#include <iostream>
+#include "aquila/source/generator/SineGenerator.h"
+#include "aquila/transform/FftFactory.h"
+#include "aquila/tools/TextPlot.h"
+#include <functional>
+#include <memory>
+
 
 GLuint program;
 GLint attribute_coord1d;
@@ -27,6 +47,8 @@ bool showpoints = false;
 
 GLuint vbo;
 
+GLbyte graph[2048];
+
 int init_resources() {
 	program = create_program("graph.v.glsl", "graph.f.glsl");
 	if (program == 0)
@@ -39,16 +61,6 @@ int init_resources() {
 
 	if (attribute_coord1d == -1 || uniform_offset_x == -1 || uniform_scale_x == -1 || uniform_mytexture == -1)
 		return 0;
-
-	// Create our datapoints, store it as bytes
-	GLbyte graph[2048];
-
-	for (int i = 0; i < 2048; i++) {
-		float x = (i - 1024.0) / 100.0;
-		float y = sin(x * 10.0) / (1.0 + x * x);
-
-		graph[i] = roundf(y * 128 + 128);
-	}
 
 	/* Upload the texture with our datapoints */
 	glActiveTexture(GL_TEXTURE0);
@@ -114,15 +126,15 @@ void display() {
 
 void special(int key, int x, int y) {
 	switch (key) {
-	case GLUT_KEY_F1:
+	case GLUT_KEY_F6:
 		interpolate = !interpolate;
 		printf("Interpolation is now %s\n", interpolate ? "on" : "off");
 		break;
-	case GLUT_KEY_F2:
+	case GLUT_KEY_F7:
 		clamp = !clamp;
 		printf("Clamping is now %s\n", clamp ? "on" : "off");
 		break;
-	case GLUT_KEY_F3:
+	case GLUT_KEY_F8:
 		showpoints = !showpoints;
 		printf("Showing points is now %s\n", showpoints ? "on" : "off");
 		break;
@@ -151,9 +163,42 @@ void free_resources() {
 	glDeleteProgram(program);
 }
 
-int main(int argc, char *argv[]) {
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_RGB);
+int main(int argc, char *argv[])
+{	
+
+    if (argc < 2)
+    {
+        std::cout << "Usage: wave_iteration <FILENAME>" << std::endl;
+        return 1;
+    }
+
+//SFML Plays Audio
+
+    sf::Music music;
+    if (!music.openFromFile(argv[1]))
+       return -1; // error
+    music.play();
+
+
+//Aquila 
+
+    Aquila::WaveFile wav(argv[1]);
+    std::cout << "Loaded file: " << wav.getFilename()
+              << " (" << wav.getBitsPerSample() << "b)" << std::endl;
+    
+
+    for (std::size_t i = 5805, j = 0; i<7800; i++ )
+    {	
+    	    float x = (wav.sample(i) - 1024.0) / 100.0;
+    	    float y = sin(x * 10.0) / (1.0 + x * x);
+
+    	    graph[j++] = roundf(y * 128 + 128);
+    }
+
+    //OpenGL code starts here
+
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB);
 	glutInitWindowSize(640, 480);
 	glutCreateWindow("My Graph");
 
@@ -186,9 +231,9 @@ int main(int argc, char *argv[]) {
 	printf("Use left/right to move horizontally.\n");
 	printf("Use up/down to change the horizontal scale.\n");
 	printf("Press home to reset the position and scale.\n");
-	printf("Press F1 to toggle interpolation.\n");
-	printf("Press F2 to toggle clamping.\n");
-	printf("Press F3 to toggle drawing points.\n");
+	printf("Press F6 to toggle interpolation.\n");
+	printf("Press F7 to toggle clamping.\n");
+	printf("Press F8 to toggle drawing points.\n");
 
 	if (init_resources()) {
 		glutDisplayFunc(display);
