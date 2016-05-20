@@ -1,0 +1,4 @@
+This directory contains code that is identical in all tutorials.
+
+Make it MINIMAL: the OpenGL Wikibook's goal is to understand how
+OpenGL works, not how to use a toolkit that we develop.
