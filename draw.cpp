@@ -1,23 +1,17 @@
-/* 
- Compile: 
- Without SFML: g++ -std=gnu++11 draw.cpp  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL ./common/shader_utils.o -o draw
-
- With SFML:
- l1f3@>prj$ g++ -std=c++11 -c draw.cpp
- l1f3@>prj$ g++ -std=gnu++11 draw.o  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ./common/shader_utils.o -o draw 
- l1f3@>prj$ ./draw 
-*/
+//g++ -std=c++11 -c draw.cpp
+//g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
+#include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
-#include <SFML/Audio.hpp>
-#include <unistd.h>
 
 #include <GL/glew.h>
 #include <GL/glut.h>
 
 #include "common/shader_utils.h"
+
+#include <SFML/Audio.hpp>
+#include <unistd.h>
 
 #include "aquila/global.h"
 #include "aquila/source/WaveFile.h"
@@ -30,10 +24,26 @@
 #include <functional>
 #include <memory>
 
-#include <chrono>
-#include <thread>
-//using namespace std;
+//#include <chrono>
+//#include <thread>
+#include <string.h>
 
+//kissFFT
+#include "kiss_fft130/kiss_fft.h"
+#ifndef M_PI
+#define M_PI 3.14159265358979324
+#endif
+
+#define N 2048
+#include <sys/time.h>
+typedef unsigned long long timestamp_t;
+  static timestamp_t
+    get_timestamp ()
+    {
+      struct timeval now;
+      gettimeofday (&now, NULL);
+      return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
+    }
 
 GLuint program;
 GLint attribute_coord1d;
@@ -46,14 +56,119 @@ float offset_x = 0.0;
 float scale_x = 1.0;
 
 bool interpolate = false;
-bool clamp = true;
+bool clamp = false;
 bool showpoints = true;
 
 GLuint vbo;
+GLbyte graph[N/2]; 
+double framePointer;
+char fileName[50];
+bool calledFromInit = true;
+bool dataEnd = false;
 
-GLbyte graph[2048];	
+kiss_fft_cpx in[N],out[N];
+
+
+void getData();
+void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
+{
+  kiss_fft_cfg cfg;
+
+ 
+
+  if ((cfg = kiss_fft_alloc(N, 0/*is_inverse_fft*/, NULL, NULL)) != NULL)
+  {
+    size_t i;
+
+    kiss_fft(cfg, in, out);
+    free(cfg);
+
+   } 
+  else
+  {
+    printf("not enough memory?\n");
+    exit(-1);
+  }
+
+}
+
+
+void getData()
+{
+	timestamp_t t0 = get_timestamp();
+
+	int i,j,x;
+	Aquila::WaveFile wav(fileName);
+	double mag[N/2];
+	
+	//Get first 2048 samples
+	for( i = framePointer, j = 0; i < (framePointer + N)
+										 && framePointer < wav.getSamplesCount(); i++,j++  ){
+
+		in[j].r = (float)wav.sample(i), in[j].i = 0;  //stores 2048 samples
+
+	}
+
+	framePointer = i;
+	if(framePointer >= wav.getSamplesCount())
+		dataEnd = true; 
+
+	getFft(in,out);
+
+	// calculate magnitude of first n/2 FFT
+	for(i = 0; i < N/2; i++ )
+		mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
+
+	// N/2 Log magnitude values.
+	for (i = 0; i < N/2 ; ++i){
+		x =   20 * log10(mag[i]) ;
+		graph[i] = log(mag[i]);	
+	}
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
+//Executes from second call
+	if(!calledFromInit)
+	{
+	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
+
+	// Create the vertex buffer object
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+	// Create an array with only x values.
+	GLfloat line[101];
+
+	// Fill it in just like an array
+	for (int i = 0; i < 101; i++) {
+		line[i] = (i - 50) / 50.0;
+	}
+
+	// Tell OpenGL to copy our array to the buffer object
+	glBufferData(GL_ARRAY_BUFFER, sizeof line, line, GL_STATIC_DRAW);
+
+	// Enable point size control in vertex shader
+#ifndef GL_ES_VERSION_2_0
+	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+#endif
+	} 
+
+/*	for (std::size_t i = 5805, j = 0; i<6805; i++ )
+    {	
+    	    float x = (wav.sample(i) - 1024.0) / 100.0;
+    	    float y = sin(x * 10.0) / (1.0 + x * x);
+
+    	    graph[j++] = roundf(y * 128 + 128);
+    }
+
+*/	timestamp_t t1 = get_timestamp();
+	double secs = (t1 - t0) / 1000000.0L;
+	std::cout<<"getdata total time: getData"<<secs<<std::endl;
+
+}
 
 int init_resources() {
+
+	timestamp_t t0 = get_timestamp();
 	program = create_program("graph.v.glsl", "graph.f.glsl");
 	if (program == 0)
 		return 0;
@@ -66,6 +181,18 @@ int init_resources() {
 	if (attribute_coord1d == -1 || uniform_offset_x == -1 || uniform_scale_x == -1 || uniform_mytexture == -1)
 		return 0;
 
+	// Create our datapoints, store it as bytes
+	//GLbyte graph[2048];  thi is made as global
+
+	/* these points are not used
+	for (int i = 0; i < 2048; i++) {
+		float x = (i - 1024.0) / 100.0;
+		float y = sin(x * 10.0) / (1.0 + x * x);
+
+		graph[i] = roundf(y * 128 + 128);
+	} */
+	getData();
+	calledFromInit = !calledFromInit;
 	/* Upload the texture with our datapoints */
 	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &texture_id);
@@ -92,6 +219,11 @@ int init_resources() {
 	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 #endif
 
+	//return 1;
+
+	timestamp_t t1 = get_timestamp();
+	double secs = (t1 - t0) / 1000000.0L;
+	std::cout<<"iinit init_resources total time: "<<secs<<std::endl;
 	return 1;
 }
 
@@ -125,29 +257,31 @@ void display() {
 	if (showpoints)
 		glDrawArrays(GL_POINTS, 0, 101);
 
+	glFlush();
 	glutSwapBuffers();
-}
 
-void glutAdd()
-{
-	offset_x -= 0.1;	
-	if(offset_x < -1.0)
-		offset_x = 0.0;
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	display();
+	if(dataEnd != true){
+		getData();
+		//display();
+		glFlush();
+	glutSwapBuffers();
+	}
+	else return;
+
+	
 }
 
 void special(int key, int x, int y) {
 	switch (key) {
-	case GLUT_KEY_F6:
+	case GLUT_KEY_F1:
 		interpolate = !interpolate;
 		printf("Interpolation is now %s\n", interpolate ? "on" : "off");
 		break;
-	case GLUT_KEY_F7:
+	case GLUT_KEY_F2:
 		clamp = !clamp;
 		printf("Clamping is now %s\n", clamp ? "on" : "off");
 		break;
-	case GLUT_KEY_F8:
+	case GLUT_KEY_F3:
 		showpoints = !showpoints;
 		printf("Showing points is now %s\n", showpoints ? "on" : "off");
 		break;
@@ -169,7 +303,6 @@ void special(int key, int x, int y) {
 		break;
 	}
 
-	
 	glutPostRedisplay();
 }
 
@@ -177,43 +310,25 @@ void free_resources() {
 	glDeleteProgram(program);
 }
 
-int main(int argc, char *argv[])
-{	
-
-    if (argc < 2)
+int main(int argc, char *argv[]) 
+{
+	if (argc < 2)
     {
         std::cout << "Usage: wave_iteration <FILENAME>" << std::endl;
         return 1;
     }
+    strcpy(fileName, argv[1]);
 
-//SFML Plays Audio
+    //SFML Plays Audio
 
     sf::Music music;
     if (!music.openFromFile(argv[1]))
        return -1; // error
-    music.play();
+  //  music.play();
 
 
-//Aquila 
-
-    Aquila::WaveFile wav(argv[1]);
-    std::cout << "Loaded file: " << wav.getFilename()
-              << " (" << wav.getBitsPerSample() << "b)" << std::endl;
-
- for (std::size_t i = 5805, j = 0; i<7800; i++ )
-    {	
-    	    float x = (wav.sample(i) - 1024.0) / 100.0;
-    	    float y = sin(x * 10.0) / (1.0 + x * x);
-
-    	    graph[j++] = roundf(y * 128 + 128);
-    }
-
- 	
-
-    //OpenGL code starts here
-
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_RGB);
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGB);
 	glutInitWindowSize(640, 480);
 	glutCreateWindow("My Graph");
 
@@ -246,17 +361,13 @@ int main(int argc, char *argv[])
 	printf("Use left/right to move horizontally.\n");
 	printf("Use up/down to change the horizontal scale.\n");
 	printf("Press home to reset the position and scale.\n");
-	printf("Press F6 to toggle interpolation.\n");
-	printf("Press F7 to toggle clamping.\n");
-	printf("Press F8 to toggle drawing points.\n");
-
-    int lasti = 0;
-    
-
+	printf("Press F1 to toggle interpolation.\n");
+	printf("Press F2 to toggle clamping.\n");
+	printf("Press F3 to toggle drawing points.\n");
+	getData();
 	if (init_resources()) {
 		glutDisplayFunc(display);
 		glutSpecialFunc(special);
-		glutIdleFunc(glutAdd);
 		glutMainLoop();
 	}
 
