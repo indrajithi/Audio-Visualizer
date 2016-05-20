@@ -1,10 +1,10 @@
 /* 
  Compile: 
- Without SFML: g++ -std=gnu++11 draw.cpp  -L /home/username/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL ./common/shader_utils.o -o draw
+ Without SFML: g++ -std=gnu++11 draw.cpp  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL ./common/shader_utils.o -o draw
 
  With SFML:
  l1f3@>prj$ g++ -std=c++11 -c draw.cpp
- l1f3@>prj$ g++ -std=gnu++11 draw.o  -L /home/username/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ./common/shader_utils.o -o draw 
+ l1f3@>prj$ g++ -std=gnu++11 draw.o  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ./common/shader_utils.o -o draw 
  l1f3@>prj$ ./draw 
 */
 #include <stdio.h>
@@ -30,6 +30,10 @@
 #include <functional>
 #include <memory>
 
+#include <chrono>
+#include <thread>
+//using namespace std;
+
 
 GLuint program;
 GLint attribute_coord1d;
@@ -42,12 +46,12 @@ float offset_x = 0.0;
 float scale_x = 1.0;
 
 bool interpolate = false;
-bool clamp = false;
-bool showpoints = false;
+bool clamp = true;
+bool showpoints = true;
 
 GLuint vbo;
 
-GLbyte graph[2048];
+GLbyte graph[2048];	
 
 int init_resources() {
 	program = create_program("graph.v.glsl", "graph.f.glsl");
@@ -124,6 +128,15 @@ void display() {
 	glutSwapBuffers();
 }
 
+void glutAdd()
+{
+	offset_x -= 0.1;	
+	if(offset_x < -1.0)
+		offset_x = 0.0;
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	display();
+}
+
 void special(int key, int x, int y) {
 	switch (key) {
 	case GLUT_KEY_F6:
@@ -156,6 +169,7 @@ void special(int key, int x, int y) {
 		break;
 	}
 
+	
 	glutPostRedisplay();
 }
 
@@ -185,15 +199,16 @@ int main(int argc, char *argv[])
     Aquila::WaveFile wav(argv[1]);
     std::cout << "Loaded file: " << wav.getFilename()
               << " (" << wav.getBitsPerSample() << "b)" << std::endl;
-    
 
-    for (std::size_t i = 5805, j = 0; i<7800; i++ )
+ for (std::size_t i = 5805, j = 0; i<7800; i++ )
     {	
     	    float x = (wav.sample(i) - 1024.0) / 100.0;
     	    float y = sin(x * 10.0) / (1.0 + x * x);
 
     	    graph[j++] = roundf(y * 128 + 128);
     }
+
+ 	
 
     //OpenGL code starts here
 
@@ -235,9 +250,13 @@ int main(int argc, char *argv[])
 	printf("Press F7 to toggle clamping.\n");
 	printf("Press F8 to toggle drawing points.\n");
 
+    int lasti = 0;
+    
+
 	if (init_resources()) {
 		glutDisplayFunc(display);
 		glutSpecialFunc(special);
+		glutIdleFunc(glutAdd);
 		glutMainLoop();
 	}
 
