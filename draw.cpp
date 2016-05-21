@@ -2,7 +2,7 @@
 //g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
 #include "visualizer.hpp"
 
-#define N 2048
+#define N 14700
 
 
 
@@ -23,15 +23,15 @@ GLuint texture_id;
 GLint uniform_mytexture;
 
 float offset_x = 0.0;
-float scale_x = 1.0/(1.5*10)/(1.5*7);
-
+//float scale_x = 1.0/(1.5*10)/(1.5*7);
+float scale_x =1.0;
 bool interpolate = true;
 bool clamp = false;
 bool showpoints = true;
 
 GLuint vbo;
 GLbyte graph[N/2]; 
-double framePointer;
+int framePointer;
 char fileName[50];
 bool calledFromInit = true;
 bool dataEnd = false;
@@ -67,7 +67,7 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	//offset_x -= 0.07;	
 	//if(offset_x < -1.0)
 		offset_x = 0.0;
@@ -116,7 +116,7 @@ void getData()
 		in[j].i = 0;  //stores 2048 samples
 
 	}
-	if(framePointer<roof){
+	if(framePointer<roof-2048){
 		framePointer = i;
 
 	}
@@ -139,6 +139,27 @@ void getData()
 		x =   20 * log10(mag[i]) ;
 		graph[i] = log(x);	
 	}
+	//collect 72 points
+	int tmp[75];
+	if(framePointer % 85 == 0)
+	{	
+		for(i= framePointer - 72, j =0; i< framePointer +72; i++, j++)
+		tmp[j] = graph[i];
+	
+	//find avg of 72 points
+	int tmpMax = tmp[0];
+	for(i=0; i< 72; i++)
+	{	
+		for(j=0; j<72; j++)
+			if(tmp[i] > tmp[j] )
+				tmpMax = tmp[i];
+
+	}
+	graph[framePointer - 72] = tmpMax;
+	framePointer = framePointer - 72; 
+
+}
+
 	//graph [graphPtr]=magN(tmpGraph,i);
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
 //Executes from second call
@@ -351,7 +372,7 @@ int main(int argc, char *argv[])
     sf::Music music;
     if (!music.openFromFile(argv[1]))
        return -1; // error
-    music.play();
+    //music.play();
 
 
 	glutInit(&argc, argv);
