@@ -272,11 +272,11 @@ void getData()
 
 */	timestamp_t t1 = get_timestamp();
 	double secs = (t1 - t0) / 1000000.0L;
-<<<<<<< HEAD
+
 	std::cout<<"getdata total time: getData"<<secs<<std::endl;
-=======
+
 	//std::cout<<"getdata total time: "<<secs<<std::endl;
->>>>>>> develop
+
 
 }
 
