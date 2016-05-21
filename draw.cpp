@@ -53,7 +53,7 @@ GLuint texture_id;
 GLint uniform_mytexture;
 
 float offset_x = 0.0;
-float scale_x = 1.0;
+float scale_x = 1.0/(1.5*10)/(1.5*6);
 
 bool interpolate = false;
 bool clamp = false;
@@ -97,14 +97,37 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
-	offset_x -= 0.1;	
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	//offset_x -= 0.07;	
 	//if(offset_x < -1.0)
-	//	offset_x = 0.0;
-//	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		offset_x = 0.0;
+
 	getData();
 	display();
 	glFlush();
 	glutSwapBuffers();
+}
+
+float windoFunction(float freq)
+{
+	float a = 0.54, b = 0.46;
+	return a - b * cos((2*M_PI)/(freq)-1);
+
+}
+int graphPtr = 0;
+int tmpGraph[N/2];
+int magN(int n)
+{	
+	int max = tmpGraph[0];
+	for(int i=1; i<n; i++)
+	{
+		graph[i]>max;
+		max = tmpGraph[i];
+
+	}
+	
+	graphPtr ++;
+	return max;
 }
 
 void getData()
@@ -114,30 +137,39 @@ void getData()
 	int i,j,x;
 	Aquila::WaveFile wav(fileName);
 	double mag[N/2];
-	
+	double roof = wav.getSamplesCount();
 	//Get first 2048 samples
 	for( i = framePointer, j = 0; i < (framePointer + N)
-										 && framePointer < wav.getSamplesCount(); i++,j++  ){
+										 && framePointer < roof; i++,j++  ){
 
-		in[j].r = (float)wav.sample(i), in[j].i = 0;  //stores 2048 samples
+		in[j].r = windoFunction((wav.sample(i)));
+		in[j].i = 0;  //stores 2048 samples
 
 	}
+	if(framePointer<roof){
+		framePointer = i;
 
-	framePointer = i;
-	if(framePointer >= wav.getSamplesCount())
+	}
+	else 
+		exit(0);
+
+	if(framePointer >= wav.getSamplesCount()){
 		dataEnd = true; 
+		return ;
+	}
 	std::cout<<"Framepointer = "<<framePointer<<std::endl;
 	getFft(in,out);
 
 	// calculate magnitude of first n/2 FFT
 	for(i = 0; i < N/2; i++ )
 		mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
-
+	
 	// N/2 Log magnitude values.
 	for (i = 0; i < N/2 ; ++i){
 		x =   20 * log10(mag[i]) ;
 		graph[i] = log(x);	
 	}
+	//graph [graphPtr]=magN(tmpGraph,i);
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
 //Executes from second call
 	if(!calledFromInit)
@@ -273,6 +305,9 @@ void display() {
 
 	glFlush();
 	glutSwapBuffers();
+
+	if(checkEnd() > 0)
+		exit(0);
 
 	if(dataEnd != true){
 		getData();
