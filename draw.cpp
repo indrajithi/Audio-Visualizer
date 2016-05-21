@@ -340,6 +340,11 @@ int init_resources() {
 	std::cout<<"iinit init_resources total time: "<<secs<<std::endl;
 	return 1;
 }
+int checkEnd()
+{
+
+return -1;	
+}
 
 void display() {
 	glUseProgram(program);
