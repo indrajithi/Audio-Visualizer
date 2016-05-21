@@ -24,8 +24,8 @@
 #include <functional>
 #include <memory>
 
-//#include <chrono>
-//#include <thread>
+#include <chrono>
+#include <thread>
 #include <string.h>
 
 //kissFFT
@@ -70,6 +70,8 @@ kiss_fft_cpx in[N],out[N];
 
 
 void getData();
+void display();
+
 void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 {
   kiss_fft_cfg cfg;
@@ -93,6 +95,15 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 }
 
 
+void moveWav()
+{
+	offset_x -= 0.1;	
+	if(offset_x < -1.0)
+		offset_x = 0.0;
+	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	display();
+}
+
 void getData()
 {
 	timestamp_t t0 = get_timestamp();
@@ -112,7 +123,7 @@ void getData()
 	framePointer = i;
 	if(framePointer >= wav.getSamplesCount())
 		dataEnd = true; 
-
+	std::cout<<"Framepointer = "<<framePointer<<std::endl;
 	getFft(in,out);
 
 	// calculate magnitude of first n/2 FFT
@@ -162,7 +173,7 @@ void getData()
 
 */	timestamp_t t1 = get_timestamp();
 	double secs = (t1 - t0) / 1000000.0L;
-	std::cout<<"getdata total time: "<<secs<<std::endl;
+	//std::cout<<"getdata total time: "<<secs<<std::endl;
 
 }
 
@@ -324,7 +335,7 @@ int main(int argc, char *argv[])
     sf::Music music;
     if (!music.openFromFile(argv[1]))
        return -1; // error
-  //  music.play();
+    music.play();
 
 
 	glutInit(&argc, argv);
@@ -368,6 +379,7 @@ int main(int argc, char *argv[])
 	if (init_resources()) {
 		glutDisplayFunc(display);
 		glutSpecialFunc(special);
+		glutIdleFunc(moveWav);
 		glutMainLoop();
 	}
 
