@@ -98,10 +98,13 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 void moveWav()
 {
 	offset_x -= 0.1;	
-	if(offset_x < -1.0)
-		offset_x = 0.0;
-	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	//if(offset_x < -1.0)
+	//	offset_x = 0.0;
+//	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	getData();
 	display();
+	glFlush();
+	glutSwapBuffers();
 }
 
 void getData()
@@ -133,7 +136,7 @@ void getData()
 	// N/2 Log magnitude values.
 	for (i = 0; i < N/2 ; ++i){
 		x =   20 * log10(mag[i]) ;
-		graph[i] = log(mag[i]);	
+		graph[i] = log(x);	
 	}
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
 //Executes from second call
@@ -273,7 +276,7 @@ void display() {
 
 	if(dataEnd != true){
 		getData();
-		//display();
+	//	display();
 		glFlush();
 	glutSwapBuffers();
 	}
