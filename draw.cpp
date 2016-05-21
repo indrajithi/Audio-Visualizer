@@ -327,15 +327,15 @@ void display() {
 
 void special(int key, int x, int y) {
 	switch (key) {
-	case GLUT_KEY_F1:
+	case GLUT_KEY_F7:
 		interpolate = !interpolate;
 		printf("Interpolation is now %s\n", interpolate ? "on" : "off");
 		break;
-	case GLUT_KEY_F2:
+	case GLUT_KEY_F8:
 		clamp = !clamp;
 		printf("Clamping is now %s\n", clamp ? "on" : "off");
 		break;
-	case GLUT_KEY_F3:
+	case GLUT_KEY_F9:
 		showpoints = !showpoints;
 		printf("Showing points is now %s\n", showpoints ? "on" : "off");
 		break;
@@ -415,9 +415,9 @@ int main(int argc, char *argv[])
 	printf("Use left/right to move horizontally.\n");
 	printf("Use up/down to change the horizontal scale.\n");
 	printf("Press home to reset the position and scale.\n");
-	printf("Press F1 to toggle interpolation.\n");
-	printf("Press F2 to toggle clamping.\n");
-	printf("Press F3 to toggle drawing points.\n");
+	printf("Press F7 to toggle interpolation.\n");
+	printf("Press F8 to toggle clamping.\n");
+	printf("Press F9 to toggle drawing points.\n");
 	getData();
 	if (init_resources()) {
 		glutDisplayFunc(display);
