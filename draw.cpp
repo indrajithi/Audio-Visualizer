@@ -355,6 +355,9 @@ void special(int key, int x, int y) {
 		offset_x = 0.0;
 		scale_x = 1.0;
 		break;
+	case GLUT_KEY_F10:
+		exit(0);
+
 	}
 
 	glutPostRedisplay();
@@ -418,6 +421,7 @@ int main(int argc, char *argv[])
 	printf("Press F7 to toggle interpolation.\n");
 	printf("Press F8 to toggle clamping.\n");
 	printf("Press F9 to toggle drawing points.\n");
+	printf("Press F10 to exit.\n");
 	getData();
 	if (init_resources()) {
 		glutDisplayFunc(display);
