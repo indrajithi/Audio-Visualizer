@@ -1,9 +1,13 @@
-//g++ -std=c++11 -c draw.cpp
+	//g++ -std=c++11 -c draw.cpp
 //g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
 #include "visualizer.hpp"
 
-#define N 14700
+#include <ft2build.h>
+#include FT_FREETYPE_H
+FT_Library ft;
 
+//#define N 2048 //14700
+#define N 2048
 
 
 typedef unsigned long long timestamp_t;
@@ -23,8 +27,8 @@ GLuint texture_id;
 GLint uniform_mytexture;
 
 float offset_x = 0.0;
-//float scale_x = 1.0/(1.5*10)/(1.5*7);
-float scale_x =1.0;
+float scale_x = 1.0/(1.5*10)/(1.5*7);
+//float scale_x =1.0;
 bool interpolate = true;
 bool clamp = false;
 bool showpoints = true;
@@ -67,10 +71,10 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
-	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	//offset_x -= 0.07;	
 	//if(offset_x < -1.0)
-		offset_x = 0.0;
+	//	offset_x = 0.0;
 
 	getData();
 	display();
@@ -99,7 +103,8 @@ int magN(int n)
 	graphPtr ++;
 	return max;
 }
-
+int plotPtr = 0;
+int pltGraph[100];
 void getData()
 {
 	timestamp_t t0 = get_timestamp();
@@ -116,18 +121,18 @@ void getData()
 		in[j].i = 0;  //stores 2048 samples
 
 	}
-	if(framePointer<roof-2048){
+	if(framePointer<roof-N-N){
 		framePointer = i;
 
 	}
 	else 
 		exit(0);
 
-	if(framePointer >= wav.getSamplesCount()){
+	if(framePointer >= wav.getSamplesCount()) {
 		dataEnd = true; 
 		return ;
 	}
-	std::cout<<"Framepointer = "<<framePointer<<std::endl;
+	//std::cout<<"Framepointer = "<<framePointer<<std::endl;
 	getFft(in,out);
 
 	// calculate magnitude of first n/2 FFT
@@ -140,8 +145,8 @@ void getData()
 		graph[i] = log(x);	
 	}
 	//collect 72 points
-	int tmp[75];
-	if(framePointer % 85 == 0)
+/*	int tmp[75];
+	if(framePointer % 80 == 0)
 	{	
 		for(i= framePointer - 72, j =0; i< framePointer +72; i++, j++)
 		tmp[j] = graph[i];
@@ -156,13 +161,20 @@ void getData()
 
 	}
 	graph[framePointer - 72] = tmpMax;
-	framePointer = framePointer - 72; 
+	framePointer = framePointer - 73; 
+*/
 
-}
 
 	//graph [graphPtr]=magN(tmpGraph,i);
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
 //Executes from second call
+
+//plots 100 points
+/*	int pltGraph[100];
+	for(i=plotPtr,j =0; i < plotPtr + 100; i++ ,j++)
+		pltGraph[j] = graph[plotPtr];
+	plotPtr += 100; 
+*/
 	if(!calledFromInit)
 	{
 	
@@ -269,6 +281,10 @@ int checkEnd()
 return -1;	
 }
 
+
+bool playFlag = true;
+sf::Music music;
+
 void display() {
 	glUseProgram(program);
 	glUniform1i(uniform_mytexture, 0);
@@ -278,6 +294,7 @@ void display() {
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glClear(GL_COLOR_BUFFER_BIT);
+
 
 	/* Set texture wrapping mode */
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
@@ -299,8 +316,8 @@ void display() {
 	if (showpoints)
 		glDrawArrays(GL_POINTS, 0, 101);
 
-	glFlush();
-	glutSwapBuffers();
+	//glFlush();
+	//glutSwapBuffers();
 
 	if(checkEnd() > 0)
 		exit(0);
@@ -315,8 +332,9 @@ void display() {
 
 	
 }
-
+sf::Time timePlay;
 void special(int key, int x, int y) {
+	float t;
 	switch (key) {
 	case GLUT_KEY_F7:
 		interpolate = !interpolate;
@@ -332,9 +350,15 @@ void special(int key, int x, int y) {
 		break;
 	case GLUT_KEY_LEFT:
 		offset_x -= 0.1;
+		timePlay = music.getPlayingOffset();
+		t = timePlay.asSeconds(); 
+		music.setPlayingOffset(sf::seconds(t - 5));
 		break;
 	case GLUT_KEY_RIGHT:
 		offset_x += 0.1;
+		timePlay = music.getPlayingOffset();
+		t = timePlay.asSeconds(); 
+		music.setPlayingOffset(sf::seconds(t + 5));
 		break;
 	case GLUT_KEY_UP:
 		scale_x *= 1.5;
@@ -349,9 +373,41 @@ void special(int key, int x, int y) {
 	case GLUT_KEY_F10:
 		exit(0);
 
+
 	}
 
 	glutPostRedisplay();
+}
+
+void key(unsigned char k,int,int)
+{
+	if(k == 'p'){
+		
+		if(playFlag){
+			music.play();
+			playFlag = !playFlag;
+		}
+		else
+		{
+			music.pause	();
+			playFlag = !playFlag;
+		}
+	}
+	if(k == 'q')
+		exit(0);
+
+	if(k == 'f')//forward audio
+	{
+		timePlay = music.getPlayingOffset();
+		float t = timePlay.asSeconds(); 
+		music.setPlayingOffset(sf::seconds(t + 5));
+	}
+	if(k == 'r')//reload audio
+	{
+	
+		music.setPlayingOffset(sf::seconds(0));
+	}
+
 }
 
 void free_resources() {
@@ -367,13 +423,9 @@ int main(int argc, char *argv[])
     }
     strcpy(fileName, argv[1]);
 
-    //SFML Plays Audio
-
-    sf::Music music;
-    if (!music.openFromFile(argv[1]))
-       return -1; // error
-    //music.play();
-
+   //sfm play music
+ 	if (!music.openFromFile(fileName))
+       		return -1; 
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB);
@@ -415,9 +467,11 @@ int main(int argc, char *argv[])
 	printf("Press F10 to exit.\n");
 	getData();
 	if (init_resources()) {
+
 		glutDisplayFunc(display);
 		glutSpecialFunc(special);
 		glutIdleFunc(moveWav);
+		glutKeyboardFunc(key);
 		glutMainLoop();
 	}
 
