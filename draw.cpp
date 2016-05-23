@@ -2,12 +2,9 @@
 //g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
 #include "visualizer.hpp"
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-FT_Library ft;
 
 //#define N 2048 //14700
-#define N 2048
+#define N 32768
 
 
 typedef unsigned long long timestamp_t;
@@ -27,8 +24,8 @@ GLuint texture_id;
 GLint uniform_mytexture;
 
 float offset_x = 0.0;
-float scale_x = 1.0/(1.5*10)/(1.5*7);
-//float scale_x =1.0;
+//float scale_x = 1.0/(1.5*10)/(1.5*7);
+float scale_x =1.0;
 bool interpolate = true;
 bool clamp = false;
 bool showpoints = true;
@@ -117,7 +114,10 @@ void getData()
 	for( i = framePointer, j = 0; i < (framePointer + N)
 										 && framePointer < roof; i++,j++  ){
 
-		in[j].r = windoFunction((wav.sample(i)));
+		//in[j].r = windoFunction((wav.sample(i)));
+	//	in[j].r = windoFunction((wav.sample(i)));
+		double multiplier = 0.5 * (1 - cos(2*M_PI*i/N));
+		in[j].r = multiplier * wav.sample(i);
 		in[j].i = 0;  //stores 2048 samples
 
 	}
@@ -142,7 +142,8 @@ void getData()
 	// N/2 Log magnitude values.
 	for (i = 0; i < N/2 ; ++i){
 		x =   20 * log10(mag[i]) ;
-		graph[i] = log(x);	
+		//printf("%g", log(x));
+		graph[i] = 10*log(mag[i]) + 10;	
 	}
 	//collect 72 points
 /*	int tmp[75];
@@ -393,20 +394,17 @@ void key(unsigned char k,int,int)
 			playFlag = !playFlag;
 		}
 	}
-	if(k == 'q')
-		exit(0);
-
-	if(k == 'f')//forward audio
-	{
-		timePlay = music.getPlayingOffset();
-		float t = timePlay.asSeconds(); 
-		music.setPlayingOffset(sf::seconds(t + 5));
-	}
+	
+	
 	if(k == 'r')//reload audio
 	{
 	
 		music.setPlayingOffset(sf::seconds(0));
 	}
+
+
+	if(k == 'q')
+		exit(0);
 
 }
 
@@ -457,15 +455,26 @@ int main(int argc, char *argv[])
 	glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, range);
 	if (range[1] < 5.0)
 		fprintf(stderr, "WARNING: point sprite range (%f, %f) too small\n", range[0], range[1]);
-
-	printf("Use left/right to move horizontally.\n");
+printf("------------------------------------------------------\n");	
+printf("AUDIO SPECTRUM VISUALIZER\nSubmitted in partial fulfilment of the ");
+printf("requirements for the Computer Graphics\nLaboratory(10CSL67) course of the 6th semester.");
+printf("\nBachelor of Engineering In Computer science & Engineering\nSubmitted by: INDRAJITH I (4AI12CS042)\n");
+printf("------------------------------------------------------\n\n");
+	printf("Use left/right to move horizontally.And seek audio by +/-5 sec\n");
 	printf("Use up/down to change the horizontal scale.\n");
 	printf("Press home to reset the position and scale.\n");
 	printf("Press F7 to toggle interpolation.\n");
 	printf("Press F8 to toggle clamping.\n");
 	printf("Press F9 to toggle drawing points.\n");
-	printf("Press F10 to exit.\n");
+	printf("Press q to exit.\n");
+	printf("Press p to toggle Play/Pause audio.\n");
+	printf("Press r to reload and play audio.\n");
+
+	
 	getData();
+
+
+
 	if (init_resources()) {
 
 		glutDisplayFunc(display);

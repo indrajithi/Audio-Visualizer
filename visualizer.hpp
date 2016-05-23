@@ -30,20 +30,6 @@
 #include <sys/time.h>
 
 
-//txt glut
-#include <GL/freeglut.h>
-
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
-#include "common/shader_utils.h"
-
-
 //kissFFT
 #include "kiss_fft130/kiss_fft.h"
 #ifndef M_PI
