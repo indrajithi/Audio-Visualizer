@@ -1,12 +1,14 @@
 	//g++ -std=c++11 -c draw.cpp
 //g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
 #include "visualizer.hpp"
-
+#include <unistd.h>
 
 //#define N 2048 //14700
-#define N 32768
-
-
+//#define N 32768
+#define N 10000
+//#define N 10000
+//int  N;
+//TIME * FREQ(44) = N
 typedef unsigned long long timestamp_t;
   static timestamp_t
     get_timestamp ()
@@ -26,13 +28,13 @@ GLint uniform_mytexture;
 float offset_x = 0.0;
 //float scale_x = 1.0/(1.5*10)/(1.5*7);
 float scale_x =1.0;
-bool interpolate = true;
+bool interpolate = false;
 bool clamp = false;
 bool showpoints = true;
 
 GLuint vbo;
-GLbyte graph[N/2]; 
-int framePointer;
+int graph[N/2]; 
+int framePointer = 0;
 char fileName[50];
 bool calledFromInit = true;
 bool dataEnd = false;
@@ -102,6 +104,8 @@ int magN(int n)
 }
 int plotPtr = 0;
 int pltGraph[100];
+
+timestamp_t tmain;
 void getData()
 {
 	timestamp_t t0 = get_timestamp();
@@ -112,27 +116,39 @@ void getData()
 	double roof = wav.getSamplesCount();
 	//Get first 2048 samples
 	for( i = framePointer, j = 0; i < (framePointer + N)
-										 && framePointer < roof; i++,j++  ){
+										 && framePointer < roof - N ; i++,j++  ){
 
 		//in[j].r = windoFunction((wav.sample(i)));
 	//	in[j].r = windoFunction((wav.sample(i)));
-		double multiplier = 0.5 * (1 - cos(2*M_PI*i/N));
+		double multiplier = 0.5 * (1 - cos(2*M_PI*j/(N-1)));
 		in[j].r = multiplier * wav.sample(i);
-		in[j].i = 0;  //stores 2048 samples
+		in[j].i = 0;  //stores N samples
+		
 
 	}
-	if(framePointer<roof-N-N){
+	
+		
+	
+	if(framePointer<roof-N -1){
 		framePointer = i;
 
 	}
-	else 
+	else {
+		printf("Frame pointer > roof - N \n");
+		printf("Framepointer = %d\n",framePointer );
+		timestamp_t t1 = get_timestamp();
+	double secs = (t1 - tmain) / 1000000.0L;
+	std::cout<<"Program exit.\nTotal time: "<<secs<<std::endl;
 		exit(0);
+	}
 
 	if(framePointer >= wav.getSamplesCount()) {
 		dataEnd = true; 
 		return ;
 	}
-	//std::cout<<"Framepointer = "<<framePointer<<std::endl;
+
+	std::cout<<"Framepointer = "<<framePointer<<std::endl;
+
 	getFft(in,out);
 
 	// calculate magnitude of first n/2 FFT
@@ -141,9 +157,9 @@ void getData()
 	
 	// N/2 Log magnitude values.
 	for (i = 0; i < N/2 ; ++i){
-		x =   20 * log10(mag[i]) ;
-		//printf("%g", log(x));
-		graph[i] = 10*log(mag[i]) + 10;	
+	//	x =   10 * log10(mag[i]) ;
+	//	printf("  log x= %g ", log(x));
+		graph[i] = log(mag[i]) *10;	
 	}
 	//collect 72 points
 /*	int tmp[75];
@@ -296,7 +312,7 @@ void display() {
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-
+	//sleep(1);
 	/* Set texture wrapping mode */
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 
@@ -320,8 +336,10 @@ void display() {
 	//glFlush();
 	//glutSwapBuffers();
 
-	if(checkEnd() > 0)
+	if(checkEnd() > 0){
+		
 		exit(0);
+	}
 
 	if(dataEnd != true){
 		getData();
@@ -385,17 +403,22 @@ void key(unsigned char k,int,int)
 	if(k == 'p'){
 		
 		if(playFlag){
-			music.play();
+			music.pause();
 			playFlag = !playFlag;
 		}
 		else
 		{
-			music.pause	();
+			music.play();
 			playFlag = !playFlag;
 		}
 	}
 	
-	
+	if(k == 'm')
+		music.setVolume(0);
+
+	if(k == 'M')
+		music.setVolume(50);
+
 	if(k == 'r')//reload audio
 	{
 	
@@ -420,10 +443,15 @@ int main(int argc, char *argv[])
         return 1;
     }
     strcpy(fileName, argv[1]);
-
+tmain = get_timestamp();
    //sfm play music
  	if (!music.openFromFile(fileName))
        		return -1; 
+
+// init N
+   // Aquila::WaveFile wav(argv[1]);
+    //N = (int)((wav.getAudioLength()/100) * (wav.getSampleFrequency()/100));
+
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB);
@@ -473,7 +501,7 @@ printf("------------------------------------------------------\n\n");
 	
 	getData();
 
-
+	music.play();
 
 	if (init_resources()) {
 
