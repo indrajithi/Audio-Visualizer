@@ -5,7 +5,7 @@
 
 //#define N 2048 //14700
 //#define N 32768
-#define N 10000
+#define N 10004       
 //#define N 10000
 //int  N;
 //TIME * FREQ(44) = N
