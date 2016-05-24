@@ -5,7 +5,7 @@
 
 //#define N 2048 //14700
 //#define N 32768
-#define N 10124       
+#define N 2048
 //#define N 10000
 //int  N;
 //TIME * FREQ(44) = N
@@ -70,7 +70,7 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
-	//std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	//offset_x -= 0.07;	
 	//if(offset_x < -1.0)
 	//	offset_x = 0.0;
@@ -114,22 +114,19 @@ void getData()
 	Aquila::WaveFile wav(fileName);
 	double mag[N/2];
 	double roof = wav.getSamplesCount();
-	//Get first 2048 samples
+	
+	//Get first N samples
 	for( i = framePointer, j = 0; i < (framePointer + N)
 										 && framePointer < roof - N ; i++,j++  ){
 
-		//in[j].r = windoFunction((wav.sample(i)));
-	//	in[j].r = windoFunction((wav.sample(i)));
+		//Apply window function on the sample
 		double multiplier = 0.5 * (1 - cos(2*M_PI*j/(N-1)));
 		in[j].r = multiplier * wav.sample(i);
-		in[j].i = 0;  //stores N samples
-		
-
+		in[j].i = 0;  //stores N samples 
 	}
 	
 		
-	
-	if(framePointer<roof-N -1){
+	if(framePointer < roof-N -1){
 		framePointer = i;
 
 	}
@@ -142,7 +139,7 @@ void getData()
 		exit(0);
 	}
 
-	if(framePointer >= wav.getSamplesCount()) {
+	if(framePointer >= roof) {
 		dataEnd = true; 
 		return ;
 	}
@@ -152,46 +149,17 @@ void getData()
 	getFft(in,out);
 
 	// calculate magnitude of first n/2 FFT
-	for(i = 0; i < N/2; i++ )
+	for(i = 0; i < N/2; i++ ){
 		mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
 	
+	
 	// N/2 Log magnitude values.
-	for (i = 0; i < N/2 ; ++i){
+	//for (i = 0; i < N/2 ; ++i){
 	//	x =   10 * log10(mag[i]) ;
 	//	printf("  log x= %g ", log(x));
 		graph[i] = log(mag[i]) *10;	
 	}
-	//collect 72 points
-/*	int tmp[75];
-	if(framePointer % 80 == 0)
-	{	
-		for(i= framePointer - 72, j =0; i< framePointer +72; i++, j++)
-		tmp[j] = graph[i];
 	
-	//find avg of 72 points
-	int tmpMax = tmp[0];
-	for(i=0; i< 72; i++)
-	{	
-		for(j=0; j<72; j++)
-			if(tmp[i] > tmp[j] )
-				tmpMax = tmp[i];
-
-	}
-	graph[framePointer - 72] = tmpMax;
-	framePointer = framePointer - 73; 
-*/
-
-
-	//graph [graphPtr]=magN(tmpGraph,i);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
-//Executes from second call
-
-//plots 100 points
-/*	int pltGraph[100];
-	for(i=plotPtr,j =0; i < plotPtr + 100; i++ ,j++)
-		pltGraph[j] = graph[plotPtr];
-	plotPtr += 100; 
-*/
 	if(!calledFromInit)
 	{
 	
@@ -218,18 +186,6 @@ void getData()
 #endif
 	} 
 
-/*	for (std::size_t i = 5805, j = 0; i<6805; i++ )
-    {	
-    	    float x = (wav.sample(i) - 1024.0) / 100.0;
-    	    float y = sin(x * 10.0) / (1.0 + x * x);
-
-    	    graph[j++] = roundf(y * 128 + 128);
-    }
-
-*/	//timestamp_t t1 = get_timestamp();
-	//double secs = (t1 - t0) / 1000000.0L;
-	//std::cout<<"getdata total time: "<<secs<<std::endl;
-
 }
 
 int init_resources() {
@@ -247,16 +203,10 @@ int init_resources() {
 	if (attribute_coord1d == -1 || uniform_offset_x == -1 || uniform_scale_x == -1 || uniform_mytexture == -1)
 		return 0;
 
-	// Create our datapoints, store it as bytes
-	//GLbyte graph[2048];  thi is made as global
 
-	/* these points are not used
-	for (int i = 0; i < 2048; i++) {
-		float x = (i - 1024.0) / 100.0;
-		float y = sin(x * 10.0) / (1.0 + x * x);
+	 
 
-		graph[i] = roundf(y * 128 + 128);
-	} */
+	//gets N/2 values in to graph
 	getData();
 	calledFromInit = !calledFromInit;
 	/* Upload the texture with our datapoints */
