@@ -5,7 +5,7 @@
 
 //#define N 2048 //14700
 //#define N 32768
-#define N 10004       
+#define N 10124       
 //#define N 10000
 //int  N;
 //TIME * FREQ(44) = N
@@ -226,8 +226,8 @@ void getData()
     	    graph[j++] = roundf(y * 128 + 128);
     }
 
-*/	timestamp_t t1 = get_timestamp();
-	double secs = (t1 - t0) / 1000000.0L;
+*/	//timestamp_t t1 = get_timestamp();
+	//double secs = (t1 - t0) / 1000000.0L;
 	//std::cout<<"getdata total time: "<<secs<<std::endl;
 
 }
@@ -397,7 +397,7 @@ void special(int key, int x, int y) {
 
 	glutPostRedisplay();
 }
-
+bool muteFlag = false;
 void key(unsigned char k,int,int)
 {
 	if(k == 'p'){
@@ -413,12 +413,16 @@ void key(unsigned char k,int,int)
 		}
 	}
 	
-	if(k == 'm')
-		music.setVolume(0);
-
-	if(k == 'M')
-		music.setVolume(50);
-
+	if(k == 'm'){
+		if(!muteFlag){
+			music.setVolume(0);
+			muteFlag=!muteFlag;
+		}
+		else{
+			music.setVolume(100);
+			muteFlag=!muteFlag;
+		}
+	}
 	if(k == 'r')//reload audio
 	{
 	
