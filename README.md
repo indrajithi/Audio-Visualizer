@@ -13,14 +13,15 @@ This Project is implemented in C++ using OpenGL. Three frameworks **Aquila-dsp**
 
 ## Minimum requirements:
 The development of the project was done with these requirements. The can support lower versions also. It has not been tested.
-C++ compiler : g++ with c++11 support (-std=gnu++11) (version >= 5.2.1)
-OpenGL (version >=v4.5)
-Aquila-dsp framework (version >=v3.0)
-Kiss-fft Framework (version >=v1.3.0)
-SFML framework  >=2.3.2
-Git >=v2.5.0
+ * C++ compiler : g++ with c++11 support (-std=gnu++11) (version >= 5.2.1)
+ * OpenGL (version >=v4.5)
+ * Aquila-dsp framework (version >=v3.0)
+ * Kiss-fft Framework (version >=v1.3.0)
+ * SFML framework  >=2.3.2
+ * Git >=v2.5.0
 
 ## Keys Used:
+```
 Use `Left/Right` to move horizontally.
         Use `Up/Down` to change the horizontal scale.
         Use `Home` button to reset the position and scale.
@@ -60,9 +61,9 @@ Description:  Accepts a key as input and performs desired operation.
 Name :  free_resources()
 Cspecification: void free_resources()
 Description:  Clears the resources allocated for the program. 
-
+```
 ## Algorithm
-
+```
 Step 1: Begin
 Int framePointer = 0, N = 32768.
 Step 2: Load input audio file and play it using the audio Library
@@ -79,38 +80,46 @@ Step 9: If N >= total_samples_count
         Exit. 
         Else goto Step 3.
 Step 10: End.
-
+```
 3.7 Flow Chart
 
 
-## Implementation
+## Compiling the frameworks
 
-### Compiling the frameworks
+## Aquila-dsp:
+**Prerequisites**
 
-Aquila-dsp:
-Prerequisites
 CMake: Aquila relies on CMake as a build tool, so make sure you have it installed (version 2.8 or later)
 Clone repository.
+```
 git clone git://github.com/zsiciarz/aquila.git aquila-src
-Buid
+```
+**Buid**
+
 Where to build:
+```
 a-top-level-directory/
    aquila-build/
    aquila-src/
+```
 In directory you have to build do
+```
 cmake ..\aquila-src
     -DCMAKE_INSTALL_PREFIX=”~/home/mylib”
 make
 make install
-SFLM:
+```
+*SFLM:*
 Installing SFML is simple. You need administrative privilege on the machine
+```
 sudo apt-get install libsfml-dev
-Kiss FFT
+```
+**Kiss FFT**
 There is no need to build kiss-fft. You need to add their files while compiling
 
-
-### Compiling and running
-For easy compilation use the script ./compile from the project directory
+## Compiling and running
+For easy compilation use the script `./compile` from the project directory
+```
 g++ -std=c++11 -c draw.cpp
 g++ -std=gnu++11 draw.o  \
 kiss_fft130/kiss_fft.c  \
@@ -122,18 +131,18 @@ kiss_fft130/kiss_fft.c  \
 -o draw
 To run the project: 
 ./draw <audio-input>
-
+```
 
 
 ## Results
 
-This project is compiled and executed using g++ compiler g++ (version 5.2.1). 
+This project is compiled and executed using g++ compiler `g++ (version 5.2.1).` 
 Below is the screenshots of the output.
 
 ## Conclusion and Future scope
 ### Conclusion
 This Project is successfully completed and stable version 1.0 have been released.  
-Audio files of type (.wav) is supported.
+Audio files of type `(.wav)` is supported.
 Power Spectrum or Frequency Domain spectrum can be generated for the audio.
 Basic Music player functions such as Load, Play, Pause, Seek and Replay is supported.
 Clamping, interpolation, and showing of points can be toggled.
@@ -151,9 +160,10 @@ Progress bar of the audio can be displayed. Spectrum can be implemented in 3D
 Program can be ported to Windows and other operating systems.
 
 ##Reference.
+```
 [1] http://music.columbia.edu/cmc/MusicAndComputers/
 [2] https://stackoverflow.com/
 [3] http://dsp.stackexchange.com/
 [4] https://en.wikipedia.org/wiki/Frequency_domain
 [5] https://en.wikipedia.org/wiki/Window_function
-
+```
