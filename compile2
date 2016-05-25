@@ -1,0 +1,10 @@
+#!/bin/bash
+g++ -std=c++11 -c draw2.cpp 
+g++ -std=gnu++11 draw2.o  \
+kiss_fft130/kiss_fft.c  \
+-L /home/l1f3/mylib/lib/ \
+-lAquila -lOoura_fft -lm \
+-lglut -lGLEW -lGL -lGLU  \
+-lfreetype -lsfml-system \
+-lsfml-audio  ./common/shader_utils.o \
+-o draw2
