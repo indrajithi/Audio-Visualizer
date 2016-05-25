@@ -83,7 +83,7 @@ Step 9: If N >= total_samples_count
 Step 10: End.
 ```
 ## Flow Chart
-![Flow Chart](/fowchart.png "Flowchart")
+![Flow Chart](/flowchart.png "Flowchart")
 
 ## Compiling the frameworks
 
