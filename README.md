@@ -35,8 +35,9 @@ Press `right arrow` to seek audio forward by 5 seconds and move +ve x axis.
 Press `left arrow` to seek audio backward by 5 seconds and move -ve x axis.
 Press `down arrow` to decrease scale/1.5.
 Press `up arrow` to increase scale*1.5.
-
+```
 ## User defined functions
+```
 Name : get_timestamp ()
 Cspecification: static timestamp_t  get_timestamp ()
 Description: Used to get the current system time.
@@ -81,8 +82,8 @@ Step 9: If N >= total_samples_count
         Else goto Step 3.
 Step 10: End.
 ```
-3.7 Flow Chart
-
+## Flow Chart
+![Flow Chart](/fowchart.png "Flowchart")
 
 ## Compiling the frameworks
 
