@@ -5,8 +5,8 @@
 
 //#define N 2048 //14700
 //#define N 32768
-#define N 2048
-//#define N 10000
+#define N 10000
+//#define N 16384
 //int  N;
 //TIME * FREQ(44) = N
 typedef unsigned long long timestamp_t;
@@ -39,7 +39,15 @@ char fileName[50];
 bool calledFromInit = true;
 bool dataEnd = false;
 
+sf::Time totalMusicDuration;
+
+bool playFlag = true;
+
+sf::Music music;
+
 kiss_fft_cpx in[N],out[N];
+
+
 
 
 void getData();
@@ -106,6 +114,7 @@ int plotPtr = 0;
 int pltGraph[100];
 
 timestamp_t tmain;
+bool soundStatFirstCall = true;
 void getData()
 {
 	timestamp_t t0 = get_timestamp();
@@ -115,6 +124,31 @@ void getData()
 	double mag[N/2];
 	double roof = wav.getSamplesCount();
 	
+	
+	//check if audio is still playing.
+	
+/*	sf::SoundSource::Status soundStat = music.getStatus();
+
+	if(soundStatFirstCall)
+		soundStatFirstCall != soundStatFirstCall;
+	
+	std::cout<<"soundStat "<<soundStat<<std::endl;
+
+
+	if(!soundStatFirstCall)
+	switch (soundStat)
+	{
+		case 0: std::cout<<"N = "<<N<<std::endl;
+				std::cout<<"Music stopped" <<std::endl;
+				std::cout<<"total Music Duration = "<<totalMusicDuration.asMilliseconds()<<std::endl;
+			    std::cout<<"Frame Pointer = "<<framePointer<<std::endl;
+			    std::cout<<"Frames Left = "<<roof - framePointer<<std::endl;
+				std::cout<<"SFML Sample Rate = "<<music.getSampleRate()<<std::endl; 
+				exit(0);
+	}*/
+
+
+
 	//Get first N samples
 	for( i = framePointer, j = 0; i < (framePointer + N)
 										 && framePointer < roof - N ; i++,j++  ){
@@ -131,11 +165,25 @@ void getData()
 
 	}
 	else {
-		printf("Frame pointer > roof - N \n");
-		printf("Framepointer = %d\n",framePointer );
+		
 		timestamp_t t1 = get_timestamp();
-	double secs = (t1 - tmain) / 1000000.0L;
-	std::cout<<"Program exit.\nTotal time: "<<secs<<std::endl;
+		double secs = (t1 - tmain) / 1000000.0L;
+
+		sf::Time musicPlayingOffset = music.getPlayingOffset();
+		
+		unsigned int musicSampleRate = music.getSampleRate();
+
+		int musicLeftToPlay = totalMusicDuration.asMilliseconds() - musicPlayingOffset.asMilliseconds();
+
+		std::cout<<"N = "<<N<<std::endl;
+		std::cout<<"Frame pointer > roof - N"<<std::endl;
+		std::cout<<"Framepointer = "<<framePointer<<std::endl;
+		std::cout<<"Frames Left = "<<roof - framePointer<<std::endl;
+		std::cout<<"Total exec time: "<<secs<<std::endl;
+		std::cout<<"Total Music Played Duration = "<<musicPlayingOffset.asMilliseconds()<<std::endl;
+		std::cout<<"Music left to play = "<<musicLeftToPlay<<std::endl;
+		std::cout<<"SFML Sample Rate = "<<musicSampleRate<<std::endl;  
+		
 		exit(0);
 	}
 
@@ -249,8 +297,7 @@ return -1;
 }
 
 
-bool playFlag = true;
-sf::Music music;
+
 
 void display() {
 	glUseProgram(program);
@@ -397,7 +444,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     strcpy(fileName, argv[1]);
-tmain = get_timestamp();
+	tmain = get_timestamp();
    //sfm play music
  	if (!music.openFromFile(fileName))
        		return -1; 
@@ -406,6 +453,7 @@ tmain = get_timestamp();
    // Aquila::WaveFile wav(argv[1]);
     //N = (int)((wav.getAudioLength()/100) * (wav.getSampleFrequency()/100));
 
+	totalMusicDuration = music.getDuration ();
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB);
@@ -437,11 +485,11 @@ tmain = get_timestamp();
 	glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, range);
 	if (range[1] < 5.0)
 		fprintf(stderr, "WARNING: point sprite range (%f, %f) too small\n", range[0], range[1]);
-printf("------------------------------------------------------\n");	
-printf("AUDIO SPECTRUM VISUALIZER\nSubmitted in partial fulfilment of the ");
-printf("requirements for the Computer Graphics\nLaboratory(10CSL67) course of the 6th semester.");
-printf("\nBachelor of Engineering In Computer science & Engineering\nSubmitted by: INDRAJITH I (4AI12CS042)\n");
-printf("------------------------------------------------------\n\n");
+	printf("------------------------------------------------------\n");	
+	printf("AUDIO SPECTRUM VISUALIZER\nSubmitted in partial fulfilment of the ");
+	printf("requirements for the Computer Graphics\nLaboratory(10CSL67) course of the 6th semester.");
+	printf("\nBachelor of Engineering In Computer science & Engineering\nSubmitted by: INDRAJITH I (4AI12CS042)\n");
+	printf("------------------------------------------------------\n\n");
 	printf("Use left/right to move horizontally.And seek audio by +/-5 sec\n");
 	printf("Use up/down to change the horizontal scale.\n");
 	printf("Press home to reset the position and scale.\n");

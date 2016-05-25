@@ -11,6 +11,7 @@
 #include "common/shader_utils.h"
 
 #include <SFML/Audio.hpp>
+
 //#include <unistd.h>
 
 //#include "aquila/global.h"
@@ -28,6 +29,7 @@
 #include <thread>
 #include <string.h>
 #include <sys/time.h>
+
 
 
 //kissFFT
