@@ -38,15 +38,18 @@ int framePointer = 0;
 char fileName[50];
 bool calledFromInit = true;
 bool dataEnd = false;
-
-sf::Time totalMusicDuration;
-
 bool playFlag = true;
+bool muteFlag = false;
+bool soundStatFirstCall = true;
+sf::Time totalMusicDuration;
+sf::Time timePlay;
+
+
 
 sf::Music music;
 
 kiss_fft_cpx in[N],out[N];
-
+timestamp_t tmain;
 
 
 
@@ -113,13 +116,13 @@ int magN(int n)
 int plotPtr = 0;
 int pltGraph[100];
 
-timestamp_t tmain;
-bool soundStatFirstCall = true;
+
+
 void getData()
 {
 	timestamp_t t0 = get_timestamp();
-
 	int i,j,x;
+	
 	Aquila::WaveFile wav(fileName);
 	double mag[N/2];
 	double roof = wav.getSamplesCount();
@@ -320,7 +323,7 @@ void display() {
 	/* Draw using the vertices in our vertex buffer object */
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-	glEnableVertexAttribArray(attribute_coord1d);
+OB    glEnableVertexAttribArray(attribute_coord1d);
 	glVertexAttribPointer(attribute_coord1d, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
 	/* Draw the line */
@@ -348,7 +351,7 @@ void display() {
 
 	
 }
-sf::Time timePlay;
+
 void special(int key, int x, int y) {
 	float t;
 	switch (key) {
@@ -394,7 +397,7 @@ void special(int key, int x, int y) {
 
 	glutPostRedisplay();
 }
-bool muteFlag = false;
+
 void key(unsigned char k,int,int)
 {
 	if(k == 'p'){
@@ -470,7 +473,8 @@ int main(int argc, char *argv[])
 	if (!GLEW_VERSION_2_0) {
 		fprintf(stderr, "No support for OpenGL 2.0 found\n");
 		return 1;
-	}
+
+    }
 
 	GLint max_units;
 
@@ -485,6 +489,7 @@ int main(int argc, char *argv[])
 	glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, range);
 	if (range[1] < 5.0)
 		fprintf(stderr, "WARNING: point sprite range (%f, %f) too small\n", range[0], range[1]);
+
 	printf("------------------------------------------------------\n");	
 	printf("AUDIO SPECTRUM VISUALIZER\nSubmitted in partial fulfilment of the ");
 	printf("requirements for the Computer Graphics\nLaboratory(10CSL67) course of the 6th semester.");

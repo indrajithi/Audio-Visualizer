@@ -151,7 +151,6 @@ The spectrum can be scaled in Y axis.
 
 ### Limitations
 Time synchronization of audio and spectrum is not perfect.
-Hann Window function used need to be revised.
 Mp3 support is not included. 
 
 ### Future scope:
