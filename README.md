@@ -61,7 +61,7 @@ Step 10: End.
 
 ## Compiling the frameworks
 
-## Aquila-dsp:
+### Aquila-dsp:
 **Prerequisites**
 
 CMake: Aquila relies on CMake as a build tool, so make sure you have it installed (version 2.8 or later)
@@ -84,12 +84,12 @@ cmake ..\aquila-src
 make
 make install
 ```
-*SFLM:*
+###SFLM:
 Installing SFML is simple. You need administrative privilege on the machine
 ```
 sudo apt-get install libsfml-dev
 ```
-**Kiss FFT**
+###Kiss FFT
 There is no need to build kiss-fft. You need to add their files while compiling
 
 ## Compiling and running
