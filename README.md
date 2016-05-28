@@ -36,33 +36,7 @@ Press `left arrow` to seek audio backward by 5 seconds and move -ve x axis.
 Press `down arrow` to decrease scale/1.5.
 Press `up arrow` to increase scale*1.5.
 ```
-## User defined functions
-```
-Name : get_timestamp ()
-Cspecification: static timestamp_t  get_timestamp ()
-Description: Used to get the current system time.
- Name : getFft ()
-Cspecification: void  getFft ()
-Description: Used to get the fourier transform of the input array elements.
- Name : getData()
-Cspecification: void getData()
-Description:  Used to fetch N samplings, convert them to frequency domain, and convert them to log10scale.
-Name : init_resources()
-Cspecification: int init_resources()
-Description:  Initializes the resources needed for the OpenGL to draw the graph.
-Name :  checkEnd()
-Cspecification: int checkEnd()
-Description: Returns 0 if all the samples are collected. Returns -1 otherwise. 
-Name :  display()
-Cspecification: void display()
-Description: Loads the array of points into the buffer and draw the graph.
-Name :  special()
-Cspecification: void special()
-Description:  Accepts a key as input and performs desired operation.
-Name :  free_resources()
-Cspecification: void free_resources()
-Description:  Clears the resources allocated for the program. 
-```
+
 ## Algorithm
 ```
 Step 1: Begin
@@ -134,11 +108,37 @@ To run the project:
 ./draw <audio-input>
 ```
 
+## User defined functions
+```
+Name : get_timestamp ()
+Cspecification: static timestamp_t  get_timestamp ()
+Description: Used to get the current system time.
+ Name : getFft ()
+Cspecification: void  getFft ()
+Description: Used to get the fourier transform of the input array elements.
+ Name : getData()
+Cspecification: void getData()
+Description:  Used to fetch N samplings, convert them to frequency domain, and convert them to log10scale.
+Name : init_resources()
+Cspecification: int init_resources()
+Description:  Initializes the resources needed for the OpenGL to draw the graph.
+Name :  checkEnd()
+Cspecification: int checkEnd()
+Description: Returns 0 if all the samples are collected. Returns -1 otherwise. 
+Name :  display()
+Cspecification: void display()
+Description: Loads the array of points into the buffer and draw the graph.
+Name :  special()
+Cspecification: void special()
+Description:  Accepts a key as input and performs desired operation.
+Name :  free_resources()
+Cspecification: void free_resources()
+Description:  Clears the resources allocated for the program. 
+```
 
 ## Results
 
 This project is compiled and executed using g++ compiler `g++ (version 5.2.1).` 
-Below is the screenshots of the output.
 
 ## Conclusion and Future scope
 ### Conclusion
