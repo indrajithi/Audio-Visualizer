@@ -1,14 +1,10 @@
-	//g++ -std=c++11 -c draw.cpp
-//g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
+//g++ -std=c++11 -c draw.cpp
+//g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/<username>/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
 #include "visualizer.hpp"
 #include <unistd.h>
 
 #define N 2048 //14700
-//#define N 32768
-//#define N 10000
-//#define N 16384
-//int  N;
-//TIME * FREQ(44) = N
+
 typedef unsigned long long timestamp_t;
   static timestamp_t
     get_timestamp ()
@@ -80,11 +76,6 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
-	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	//offset_x -= 0.07;	
-	//if(offset_x < -1.0)
-	//	offset_x = 0.0;
-	//std::cout<<"called..\n";	
 	glFlush();
 	glutSwapBuffers();
 	getData();
@@ -127,41 +118,6 @@ void getData()
 	double mag[N/2];
 	double roof = wav.getSamplesCount();
 	
-	
-	//check if audio is still playing.
-	
-/*	sf::SoundSource::Status soundStat = music.getStatus();
-
-	if(soundStatFirstCall)
-		soundStatFirstCall != soundStatFirstCall;
-	
-	std::cout<<"soundStat "<<soundStat<<std::endl;
-
-
-	if(!soundStatFirstCall)
-	switch (soundStat)
-	{
-		case 0: std::cout<<"N = "<<N<<std::endl;
-				std::cout<<"Music stopped" <<std::endl;
-				std::cout<<"total Music Duration = "<<totalMusicDuration.asMilliseconds()<<std::endl;
-			    std::cout<<"Frame Pointer = "<<framePointer<<std::endl;
-			    std::cout<<"Frames Left = "<<roof - framePointer<<std::endl;
-				std::cout<<"SFML Sample Rate = "<<music.getSampleRate()<<std::endl; 
-				exit(0);
-	}*/
-
-
-
-	//Get first N samples
-	/*for( i = framePointer, j = 0; i < (framePointer + N)
-										 && framePointer < roof - N ; i++,j++  ){
-
-		//Apply window function on the sample
-		double multiplier = 0.5 * (1 - cos(2*M_PI*j/(N-1)));
-		in[j].r = multiplier * wav.sample(i);
-		in[j].i = 0;  //stores N samples 
-	}*/
-
 	for( i = framePointer, j = 0; i < (framePointer + N/2)
 										 && framePointer < roof - N/2 ; i++,j++  )
 										 graph[j] = array[i];	
@@ -200,19 +156,6 @@ void getData()
 
 	std::cout<<"Framepointer = "<<framePointer<<std::endl;
 
-	//getFft(in,out);
-
-	// calculate magnitude of first n/2 FFT
-	/*for(i = 0; i < N/2; i++ ){
-		mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
-	
-	
-	// N/2 Log magnitude values.
-	//for (i = 0; i < N/2 ; ++i){
-	//	x =   10 * log10(mag[i]) ;
-	//	printf("  log x= %g ", log(x));
-		graph[i] = log(mag[i]) *10;	
-	}*/
 	
 	if(!calledFromInit)
 	{
@@ -301,8 +244,6 @@ int checkEnd()
 
 return -1;	
 }
-
-
 
 
 void display() {
@@ -441,8 +382,6 @@ void key(unsigned char k,int,int)
 void free_resources() {
 	glDeleteProgram(program);
 }
-
-
   
 
 int main(int argc, char *argv[]) 
@@ -495,7 +434,6 @@ int main(int argc, char *argv[])
     break;
   }
 
- //std::cout<<"Framepointer = "<<framePointer<<std::endl;
 
   getFft(in,out);
 
@@ -504,13 +442,8 @@ int main(int argc, char *argv[])
     int val;
     mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
   
-  
-  // N/2 Log magnitude values.
-  //for (i = 0; i < N/2 ; ++i){
-  //  x =   10 * log10(mag[i]) ;
-  //  printf("  log x= %g ", log(x));
   val = log(mag[i]) * 10; 
-  //  std::cout<<graph[i]<<std::endl;
+
     it = array.end();
     it = array.insert(it,val);
     
@@ -519,10 +452,6 @@ int main(int argc, char *argv[])
 
 std::vector<int>::size_type sz = array.size();
 std::cout<<"array vec ==> "<<sz<<std::endl;
-
-// init N
-   // Aquila::WaveFile wav(argv[1]);
-    //N = (int)((wav.getAudioLength()/100) * (wav.getSampleFrequency()/100));
 
 	totalMusicDuration = music.getDuration ();
 

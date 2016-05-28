@@ -1,14 +1,12 @@
-	//g++ -std=c++11 -c draw.cpp
-//g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/l1f3/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
+//g++ -std=c++11 -c draw.cpp
+//g++ -std=gnu++11 finalDraw.o ../kiss_fft130/kiss_fft.c  -L /home/<username>/mylib/lib/ -lAquila -lOoura_fft -lm -lglut -lGLEW -lGL -lsfml-audio ../common/shader_utils.o -o finalDraw
 #include "visualizer.hpp"
 #include <unistd.h>
 
-//#define N 2048 //14700
-//#define N 32768
+//#define N 2048 
+
 #define N 10000
-//#define N 16384
-//int  N;
-//TIME * FREQ(44) = N
+
 typedef unsigned long long timestamp_t;
   static timestamp_t
     get_timestamp ()
@@ -81,10 +79,6 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
-	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	//offset_x -= 0.07;	
-	//if(offset_x < -1.0)
-	//	offset_x = 0.0;
 
 	getData();
 	display();
@@ -126,31 +120,6 @@ void getData()
 	Aquila::WaveFile wav(fileName);
 	double mag[N/2];
 	double roof = wav.getSamplesCount();
-	
-	
-	//check if audio is still playing.
-	
-/*	sf::SoundSource::Status soundStat = music.getStatus();
-
-	if(soundStatFirstCall)
-		soundStatFirstCall != soundStatFirstCall;
-	
-	std::cout<<"soundStat "<<soundStat<<std::endl;
-
-
-	if(!soundStatFirstCall)
-	switch (soundStat)
-	{
-		case 0: std::cout<<"N = "<<N<<std::endl;
-				std::cout<<"Music stopped" <<std::endl;
-				std::cout<<"total Music Duration = "<<totalMusicDuration.asMilliseconds()<<std::endl;
-			    std::cout<<"Frame Pointer = "<<framePointer<<std::endl;
-			    std::cout<<"Frames Left = "<<roof - framePointer<<std::endl;
-				std::cout<<"SFML Sample Rate = "<<music.getSampleRate()<<std::endl; 
-				exit(0);
-	}*/
-
-
 
 	//Get first N samples
 	for( i = framePointer, j = 0; i < (framePointer + N)
@@ -203,11 +172,8 @@ void getData()
 	for(i = 0; i < N/2; i++ ){
 		mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
 	
-	
 	// N/2 Log magnitude values.
-	//for (i = 0; i < N/2 ; ++i){
-	//	x =   10 * log10(mag[i]) ;
-	//	printf("  log x= %g ", log(x));
+
 		graph[i] = log(mag[i]) *10;	
 	}
 	
@@ -253,9 +219,7 @@ int init_resources() {
 
 	if (attribute_coord1d == -1 || uniform_offset_x == -1 || uniform_scale_x == -1 || uniform_mytexture == -1)
 		return 0;
-
-
-	 
+ 
 
 	//gets N/2 values in to graph
 	getData();
@@ -298,8 +262,6 @@ int checkEnd()
 
 return -1;	
 }
-
-
 
 
 void display() {
@@ -451,10 +413,6 @@ int main(int argc, char *argv[])
    //sfm play music
  	if (!music.openFromFile(fileName))
        		return -1; 
-
-// init N
-   // Aquila::WaveFile wav(argv[1]);
-    //N = (int)((wav.getAudioLength()/100) * (wav.getSampleFrequency()/100));
 
 	totalMusicDuration = music.getDuration ();
 
