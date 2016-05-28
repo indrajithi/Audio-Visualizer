@@ -1,15 +1,15 @@
-# Audio Visualizer In C++ using OpenGL
+# Audio Visualizer In C++ using OpenGL	
 ![Audio Visualizer](/scr.png "Screenshot")
 ## Introduction
 For the given input audio file **(.wav)** the program will give the **real time audio spectrum** by performing **Fast Fourier Transform (FFT)** on the audio samples and plot the graph using **OpenGL**.
 This Project is implemented in C++ using OpenGL. Three frameworks **Aquila-dsp**, **Kiss-Fft**, and **SFML** are used to perform audio sampling, fast fourier transform and audio playback respectively. The development and testing of this project is done on **Linux (ubuntu)** using 4.2.0-16-generic Kernel. Interface for the program is given with the help of keyboard.  
 
 ## Frameworks / APIs used
- 1. The following c++ frameworks are used in this project.
- 2 Simple and Fast Multimedia Library (SFML)
- 3. Aquila-dsp
- 4. Kiss-fft 
- 5. OpenGL
+The following c++ frameworks are used in this project.
+ 1. Simple and Fast Multimedia Library (SFML)
+ 2. Aquila-dsp
+ 3. Kiss-fft 
+ 4. OpenGL
 
 ## Minimum requirements:
 The development of the project was done with these requirements. The can support lower versions also. It has not been tested.
