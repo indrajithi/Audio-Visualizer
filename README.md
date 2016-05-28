@@ -1,4 +1,4 @@
-# Audio Visualizer
+# Audio Visualizer In C++ using OpenGL
 ![Audio Visualizer](/scr.png "Screenshot")
 ## Introduction
 For the given input audio file **(.wav)** the program will give the **real time audio spectrum** by performing **Fast Fourier Transform (FFT)** on the audio samples and plot the graph using **OpenGL**.
