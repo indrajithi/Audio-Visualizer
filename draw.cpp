@@ -323,7 +323,7 @@ void display() {
 	/* Draw using the vertices in our vertex buffer object */
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-OB    glEnableVertexAttribArray(attribute_coord1d);
+   glEnableVertexAttribArray(attribute_coord1d);
 	glVertexAttribPointer(attribute_coord1d, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
 	/* Draw the line */
