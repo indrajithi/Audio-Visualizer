@@ -12,7 +12,7 @@ The following c++ frameworks are used in this project.
  4. OpenGL
 
 ## Minimum requirements:
-The development of the project was done with these requirements. The can support lower versions also. It has not been tested.
+The development of the project was done with these requirements. May support lower versions also but not been tested.
  * C++ compiler : g++ with c++11 support (-std=gnu++11) (version >= 5.2.1)
  * OpenGL (version >=v4.5)
  * Aquila-dsp framework (version >=v3.0)
