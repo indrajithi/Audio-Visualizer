@@ -7,6 +7,22 @@
 
 #define N 10000
 
+#define BANDS 64         // log-spaced frequency bands, one bar each
+#define MIN_FREQ 50.0    // lower edge of the first band, in Hz; lower bands would be
+                         // narrower than one FFT bin and repeat their neighbors
+#define MAX_FREQ 16000.0 // upper edge of the last band; compressed audio is
+                         // usually empty above this, which would leave dead bars
+#define DB_FLOOR -80.0   // level drawn at the bottom of the bars, in dB
+
+#define BAR_RELEASE 9.0      // how fast bars ease back down (per second)
+#define PEAK_HOLD 0.35       // seconds a peak marker waits before falling
+#define PEAK_FALL 0.45       // peak marker fall speed, in bar heights per second
+#define BASS_MAX_FREQ 150.0  // bands below this drive the background pulse, in Hz
+
+// Progress bar layout in pixels; must match the constants in graph.f.glsl
+#define TRACK_Y 28
+#define TRACK_MARGIN 70
+
 typedef unsigned long long timestamp_t;
   static timestamp_t
     get_timestamp ()
@@ -17,25 +33,36 @@ typedef unsigned long long timestamp_t;
     }
 
 GLuint program;
-GLint attribute_coord1d;
+GLint attribute_coord2d;
 GLint uniform_offset_x;
 GLint uniform_scale_x;
 GLuint texture_id;
 GLint uniform_mytexture;
+GLint uniform_resolution;
+GLint uniform_bands;
+GLint uniform_progress;
+GLint uniform_bass;
+GLint uniform_smooth_mode;
+GLint uniform_show_peaks;
 
 float offset_x = 0.0;
 //float scale_x = 1.0/(1.5*10)/(1.5*7);
 float scale_x =1.0;
 bool interpolate = false;
 bool clamp = false;
-bool showpoints = true;
+bool showPeaks = true;
 
 GLuint vbo;
-int graph[N/2]; 
+// Two bytes per band (bar level, peak level), matching the GL_LUMINANCE_ALPHA upload
+unsigned char graph[BANDS * 2];
+float barLevel[BANDS];    // displayed bar height, 0..1
+float peakLevel[BANDS];   // falling peak marker height, 0..1
+float peakHold[BANDS];    // seconds left before each peak marker starts falling
+float bassLevel = 0;      // 0..1 low-frequency energy for the background pulse
+timestamp_t lastFrame = 0;
 int framePointer = 0;
-char fileName[50];
-bool calledFromInit = true;
-bool dataEnd = false;
+std::string fileName;
+std::unique_ptr<Aquila::WaveFile> wav;
 bool playFlag = true;
 bool muteFlag = false;
 bool soundStatFirstCall = true;
@@ -52,13 +79,14 @@ timestamp_t tmain;
 
 
 void getData();
+void uploadGraph();
 void display();
 
 void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 {
   kiss_fft_cfg cfg;
 
- 
+
 
   if ((cfg = kiss_fft_alloc(N, 0/*is_inverse_fft*/, NULL, NULL)) != NULL)
   {
@@ -67,7 +95,7 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
     kiss_fft(cfg, in, out);
     free(cfg);
 
-   } 
+   }
   else
   {
     printf("not enough memory?\n");
@@ -79,11 +107,16 @@ void getFft(const kiss_fft_cpx in[N], kiss_fft_cpx out[N])
 
 void moveWav()
 {
+	// Exit once playback finishes; a paused song keeps its last spectrum on screen
+	if (music.getStatus() == sf::Music::Stopped)
+		exit(0);
 
 	getData();
+	uploadGraph();
 	display();
-	glFlush();
-	glutSwapBuffers();
+
+	// ~60 fps is enough for the spectrum and keeps the idle loop from spinning a core
+	usleep(16000);
 }
 
 float windoFunction(float freq)
@@ -95,7 +128,7 @@ float windoFunction(float freq)
 int graphPtr = 0;
 int tmpGraph[N/2];
 int magN(int n)
-{	
+{
 	int max = tmpGraph[0];
 	for(int i=1; i<n; i++)
 	{
@@ -103,7 +136,7 @@ int magN(int n)
 		max = tmpGraph[i];
 
 	}
-	
+
 	graphPtr ++;
 	return max;
 }
@@ -114,95 +147,105 @@ int pltGraph[100];
 
 void getData()
 {
-	timestamp_t t0 = get_timestamp();
-	int i,j,x;
-	
-	Aquila::WaveFile wav(fileName);
-	double mag[N/2];
-	double roof = wav.getSamplesCount();
+	int i, j;
+	int sampleCount = wav->getSamplesCount();
+	double sampleRate = wav->getSampleFrequency();
 
-	//Get first N samples
-	for( i = framePointer, j = 0; i < (framePointer + N)
-										 && framePointer < roof - N ; i++,j++  ){
+	// Center the analysis window on the sample being played right now, so the
+	// spectrum follows playback, pause and seeking instead of free-running.
+	framePointer = music.getPlayingOffset().asSeconds() * sampleRate - N / 2;
+	if (framePointer > sampleCount - N)
+		framePointer = sampleCount - N;
+	if (framePointer < 0)
+		framePointer = 0;
 
-		//Apply window function on the sample
+	for (i = framePointer, j = 0; j < N; i++, j++) {
+		//Apply Hann window on the sample
 		double multiplier = 0.5 * (1 - cos(2*M_PI*j/(N-1)));
-		in[j].r = multiplier * wav.sample(i);
-		in[j].i = 0;  //stores N samples 
+		in[j].r = multiplier * wav->sample(i);
+		in[j].i = 0;
 	}
-	
-		
-	if(framePointer < roof-N -1){
-		framePointer = i;
-
-	}
-	else {
-		
-		timestamp_t t1 = get_timestamp();
-		double secs = (t1 - tmain) / 1000000.0L;
-
-		sf::Time musicPlayingOffset = music.getPlayingOffset();
-		
-		unsigned int musicSampleRate = music.getSampleRate();
-
-		int musicLeftToPlay = totalMusicDuration.asMilliseconds() - musicPlayingOffset.asMilliseconds();
-
-		std::cout<<"N = "<<N<<std::endl;
-		std::cout<<"Frame pointer > roof - N"<<std::endl;
-		std::cout<<"Framepointer = "<<framePointer<<std::endl;
-		std::cout<<"Frames Left = "<<roof - framePointer<<std::endl;
-		std::cout<<"Total exec time: "<<secs<<std::endl;
-		std::cout<<"Total Music Played Duration = "<<musicPlayingOffset.asMilliseconds()<<std::endl;
-		std::cout<<"Music left to play = "<<musicLeftToPlay<<std::endl;
-		std::cout<<"SFML Sample Rate = "<<musicSampleRate<<std::endl;  
-		
-		exit(0);
-	}
-
-	if(framePointer >= roof) {
-		dataEnd = true; 
-		return ;
-	}
-
-	std::cout<<"Framepointer = "<<framePointer<<std::endl;
 
 	getFft(in,out);
 
-	// calculate magnitude of first n/2 FFT
-	for(i = 0; i < N/2; i++ ){
-		mag[i] = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
-	
-	// N/2 Log magnitude values.
+	// Animation runs on wall-clock time so its speed doesn't depend on frame rate
+	timestamp_t now = get_timestamp();
+	double dt = lastFrame ? (now - lastFrame) / 1000000.0 : 0;
+	if (dt > 0.1)
+		dt = 0.1;
+	lastFrame = now;
+	double release = 1 - exp(-dt * BAR_RELEASE);
 
-		graph[i] = log(mag[i]) *10;	
+	// A full-scale 16-bit sine under a Hann window peaks at 32768 * N / 4,
+	// so normalizing by it puts the loudest possible bin at 0 dB.
+	double fullScale = 32768.0 * N / 4;
+	double binHz = sampleRate / N;
+	double maxFreq = fmin(MAX_FREQ, sampleRate / 2);
+	double bassSum = 0;
+	int bassBands = 0;
+
+	for (int band = 0; band < BANDS; band++) {
+		// Log-spaced band edges give every octave the same width on screen
+		double lo = MIN_FREQ * pow(maxFreq / MIN_FREQ, (double)band / BANDS);
+		double hi = MIN_FREQ * pow(maxFreq / MIN_FREQ, (double)(band + 1) / BANDS);
+		// Half-open bin ranges so neighboring bands never share a bin
+		int first = round(lo / binHz);
+		int last = round(hi / binHz) - 1;
+		if (last < first)
+			last = first;
+		if (last >= N/2)
+			last = N/2 - 1;
+
+		// Peak rather than average, so a pure tone keeps its full height
+		double peak = 0;
+		for (i = first; i <= last; i++) {
+			double mag = sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i));
+			if (mag > peak)
+				peak = mag;
+		}
+
+		// Map DB_FLOOR..0 dB onto 0..1, clamped so quiet bins sit at the bottom
+		double db = 20 * log10(peak / fullScale + 1e-12);
+		double level = (db - DB_FLOOR) / -DB_FLOOR;
+		if (level < 0)
+			level = 0;
+		if (level > 1)
+			level = 1;
+
+		// Bars jump up instantly and ease back down, so they move without flicker
+		if (level > barLevel[band])
+			barLevel[band] = level;
+		else
+			barLevel[band] += (level - barLevel[band]) * release;
+
+		// Peak markers hold for a moment, then drop at a steady speed
+		if (barLevel[band] >= peakLevel[band]) {
+			peakLevel[band] = barLevel[band];
+			peakHold[band] = PEAK_HOLD;
+		}
+		else if (peakHold[band] > 0)
+			peakHold[band] -= dt;
+		else
+			peakLevel[band] = fmax(barLevel[band], peakLevel[band] - PEAK_FALL * dt);
+
+		if (hi <= BASS_MAX_FREQ) {
+			bassSum += barLevel[band];
+			bassBands++;
+		}
+
+		graph[band * 2] = barLevel[band] * 255;
+		graph[band * 2 + 1] = peakLevel[band] * 255;
 	}
-	
-	if(!calledFromInit)
-	{
-	
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
 
-	// Create the vertex buffer object
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	// Bass sits high on most music, so stretch its upper range to make the pulse visible
+	double bass = bassBands ? bassSum / bassBands : 0;
+	bassLevel = fmin(fmax((bass - 0.45) / 0.45, 0.0), 1.0);
+}
 
-	// Create an array with only x values.
-	GLfloat line[101];
-
-	// Fill it in just like an array
-	for (int i = 0; i < 101; i++) {
-		line[i] = (i - 50) / 50.0;
-	}
-
-	// Tell OpenGL to copy our array to the buffer object
-	glBufferData(GL_ARRAY_BUFFER, sizeof line, line, GL_STATIC_DRAW);
-
-	// Enable point size control in vertex shader
-#ifndef GL_ES_VERSION_2_0
-	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-#endif
-	} 
-
+void uploadGraph()
+{
+	glBindTexture(GL_TEXTURE_2D, texture_id);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BANDS, 1, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, graph);
 }
 
 int init_resources() {
@@ -212,45 +255,40 @@ int init_resources() {
 	if (program == 0)
 		return 0;
 
-	attribute_coord1d = get_attrib(program, "coord1d");
+	attribute_coord2d = get_attrib(program, "coord2d");
 	uniform_offset_x = get_uniform(program, "offset_x");
 	uniform_scale_x = get_uniform(program, "scale_x");
 	uniform_mytexture = get_uniform(program, "mytexture");
+	uniform_resolution = get_uniform(program, "resolution");
+	uniform_bands = get_uniform(program, "bands");
+	uniform_progress = get_uniform(program, "progress");
+	uniform_bass = get_uniform(program, "bass");
+	uniform_smooth_mode = get_uniform(program, "smooth_mode");
+	uniform_show_peaks = get_uniform(program, "show_peaks");
 
-	if (attribute_coord1d == -1 || uniform_offset_x == -1 || uniform_scale_x == -1 || uniform_mytexture == -1)
+	if (attribute_coord2d == -1 || uniform_offset_x == -1 || uniform_scale_x == -1 || uniform_mytexture == -1
+			|| uniform_resolution == -1 || uniform_bands == -1 || uniform_progress == -1
+			|| uniform_bass == -1 || uniform_smooth_mode == -1 || uniform_show_peaks == -1)
 		return 0;
  
 
-	//gets N/2 values in to graph
+	//gets the first spectrum in to graph
 	getData();
-	calledFromInit = !calledFromInit;
 	/* Upload the texture with our datapoints */
 	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &texture_id);
 	glBindTexture(GL_TEXTURE_2D, texture_id);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2048, 1, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, graph);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, BANDS, 1, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, graph);
 
 	// Create the vertex buffer object
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-	// Create an array with only x values.
-	GLfloat line[101];
-
-	// Fill it in just like an array
-	for (int i = 0; i < 101; i++) {
-		line[i] = (i - 50) / 50.0;
-	}
+	// A single quad covering the window; the fragment shader draws everything on it
+	GLfloat quad[] = { -1, -1,   1, -1,   -1, 1,   1, 1 };
 
 	// Tell OpenGL to copy our array to the buffer object
-	glBufferData(GL_ARRAY_BUFFER, sizeof line, line, GL_STATIC_DRAW);
-
-	// Enable point size control in vertex shader
-#ifndef GL_ES_VERSION_2_0
-	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-#endif
-
-	//return 1;
+	glBufferData(GL_ARRAY_BUFFER, sizeof quad, quad, GL_STATIC_DRAW);
 
 	timestamp_t t1 = get_timestamp();
 	double secs = (t1 - t0) / 1000000.0L;
@@ -263,18 +301,72 @@ int checkEnd()
 return -1;	
 }
 
+// Formats a duration as m:ss
+std::string formatTime(float seconds)
+{
+	int total = seconds;
+	char buf[16];
+	snprintf(buf, sizeof buf, "%d:%02d", total / 60, total % 60);
+	return buf;
+}
+
+int textWidth(void *font, const std::string &text)
+{
+	int width = 0;
+	for (char c : text)
+		width += glutBitmapWidth(font, c);
+	return width;
+}
+
+void drawText(void *font, int x, int y, const std::string &text, float r, float g, float b)
+{
+	// The raster color is latched by glWindowPos, so it must be set first
+	glColor3f(r, g, b);
+	glWindowPos2i(x, y);
+	for (char c : text)
+		glutBitmapCharacter(font, c);
+}
+
+void drawOverlay(int width, int height)
+{
+	glUseProgram(0);
+
+	void *small = GLUT_BITMAP_HELVETICA_12;
+	std::string elapsed = formatTime(music.getPlayingOffset().asSeconds());
+	std::string total = formatTime(totalMusicDuration.asSeconds());
+	drawText(small, TRACK_MARGIN - 14 - textWidth(small, elapsed), TRACK_Y - 4, elapsed, 0.80, 0.80, 0.90);
+	drawText(small, width - TRACK_MARGIN + 14, TRACK_Y - 4, total, 0.55, 0.55, 0.65);
+
+	// Song name along the top, with a pause badge and the key hints
+	std::string title = fileName.substr(fileName.find_last_of('/') + 1);
+	drawText(GLUT_BITMAP_HELVETICA_18, 22, height - 32, title, 0.95, 0.93, 1.0);
+	if (!playFlag)
+		drawText(small, 34 + textWidth(GLUT_BITMAP_HELVETICA_18, title), height - 31, "PAUSED", 1.0, 0.72, 0.30);
+
+	std::string hints = "p pause    r restart    click bar to seek    q quit";
+	drawText(small, width - 22 - textWidth(small, hints), height - 31, hints, 0.45, 0.45, 0.55);
+}
 
 void display() {
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	int height = glutGet(GLUT_WINDOW_HEIGHT);
+	glViewport(0, 0, width, height);
+
+	float duration = totalMusicDuration.asSeconds();
+	float progress = duration > 0 ? music.getPlayingOffset().asSeconds() / duration : 0;
+
 	glUseProgram(program);
 	glUniform1i(uniform_mytexture, 0);
 
 	glUniform1f(uniform_offset_x, offset_x);
 	glUniform1f(uniform_scale_x, scale_x);
+	glUniform2f(uniform_resolution, width, height);
+	glUniform1f(uniform_bands, BANDS);
+	glUniform1f(uniform_progress, progress);
+	glUniform1f(uniform_bass, bassLevel);
+	glUniform1f(uniform_smooth_mode, interpolate ? 1.0 : 0.0);
+	glUniform1f(uniform_show_peaks, showPeaks ? 1.0 : 0.0);
 
-	glClearColor(0.0, 0.0, 0.0, 0.0);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	//sleep(1);
 	/* Set texture wrapping mode */
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 
@@ -282,36 +374,53 @@ void display() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, interpolate ? GL_LINEAR : GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, interpolate ? GL_LINEAR : GL_NEAREST);
 
-	/* Draw using the vertices in our vertex buffer object */
+	/* Draw the full-window quad from our vertex buffer object */
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glEnableVertexAttribArray(attribute_coord2d);
+	glVertexAttribPointer(attribute_coord2d, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDisableVertexAttribArray(attribute_coord2d);
 
-   glEnableVertexAttribArray(attribute_coord1d);
-	glVertexAttribPointer(attribute_coord1d, 1, GL_FLOAT, GL_FALSE, 0, 0);
+	drawOverlay(width, height);
 
-	/* Draw the line */
-	glDrawArrays(GL_LINE_STRIP, 0, 101);
-
-	/* Draw points as well, if requested */
-	if (showpoints)
-		glDrawArrays(GL_POINTS, 0, 101);
-
-	//glFlush();
-	//glutSwapBuffers();
-
-	if(checkEnd() > 0){
-		
-		exit(0);
-	}
-
-	if(dataEnd != true){
-		getData();
-	//	display();
-		glFlush();
+	glFlush();
 	glutSwapBuffers();
-	}
-	else return;
+}
 
-	
+// Seeks to the song position under window x when it lands on the progress bar
+void seekToX(int x)
+{
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	float fraction = (float)(x - TRACK_MARGIN) / (width - 2 * TRACK_MARGIN);
+	// Stop just short of the end: seeking onto it would stop playback and exit
+	fraction = fmin(fmax(fraction, 0.0f), 0.999f);
+	music.setPlayingOffset(sf::seconds(fraction * totalMusicDuration.asSeconds()));
+}
+
+bool draggingProgress = false;
+
+void mouse(int button, int state, int x, int y)
+{
+	if (button != GLUT_LEFT_BUTTON)
+		return;
+	if (state == GLUT_UP) {
+		draggingProgress = false;
+		return;
+	}
+
+	// GLUT reports y from the top; the track is laid out from the bottom
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	int fromBottom = glutGet(GLUT_WINDOW_HEIGHT) - y;
+	if (abs(fromBottom - TRACK_Y) <= 12 && x >= TRACK_MARGIN - 10 && x <= width - TRACK_MARGIN + 10) {
+		draggingProgress = true;
+		seekToX(x);
+	}
+}
+
+void motion(int x, int y)
+{
+	if (draggingProgress)
+		seekToX(x);
 }
 
 void special(int key, int x, int y) {
@@ -319,15 +428,15 @@ void special(int key, int x, int y) {
 	switch (key) {
 	case GLUT_KEY_F7:
 		interpolate = !interpolate;
-		printf("Interpolation is now %s\n", interpolate ? "on" : "off");
+		printf("Smooth curve is now %s\n", interpolate ? "on" : "off");
 		break;
 	case GLUT_KEY_F8:
 		clamp = !clamp;
 		printf("Clamping is now %s\n", clamp ? "on" : "off");
 		break;
 	case GLUT_KEY_F9:
-		showpoints = !showpoints;
-		printf("Showing points is now %s\n", showpoints ? "on" : "off");
+		showPeaks = !showPeaks;
+		printf("Peak markers are now %s\n", showPeaks ? "on" : "off");
 		break;
 	case GLUT_KEY_LEFT:
 		offset_x -= 0.1;
@@ -408,18 +517,32 @@ int main(int argc, char *argv[])
         std::cout << "Usage: wave_iteration <FILENAME>" << std::endl;
         return 1;
     }
-    strcpy(fileName, argv[1]);
+    fileName = argv[1];
 	tmain = get_timestamp();
    //sfm play music
  	if (!music.openFromFile(fileName))
-       		return -1; 
+       		return -1;
 
 	totalMusicDuration = music.getDuration ();
 
+	// Decode the samples once up front; re-reading the file every frame
+	// made each frame cost a full load of the WAV
+	wav.reset(new Aquila::WaveFile(fileName));
+	double expectedSamples = totalMusicDuration.asSeconds() * wav->getSampleFrequency();
+	if (wav->getSamplesCount() < N || wav->getSamplesCount() < 0.9 * expectedSamples) {
+		// The sample reader expects the audio data right after a plain 44-byte
+		// header; files with extra chunks (e.g. metadata) before it are misread
+		fprintf(stderr, "Error: read only %u samples from %s; re-save it as plain 16-bit PCM WAV "
+				"(e.g. ffmpeg -i in.wav -map_metadata -1 -fflags +bitexact out.wav)\n",
+				(unsigned)wav->getSamplesCount(), fileName.c_str());
+		return 1;
+	}
+
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_RGB);
-	glutInitWindowSize(640, 480);
-	glutCreateWindow("My Graph");
+	// Double buffered so each frame appears whole, without tearing or flicker
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+	glutInitWindowSize(1000, 560);
+	glutCreateWindow("Audio Spectrum Visualizer");
 
 	GLenum glew_status = glewInit();
 
@@ -456,15 +579,13 @@ int main(int argc, char *argv[])
 	printf("Use left/right to move horizontally.And seek audio by +/-5 sec\n");
 	printf("Use up/down to change the horizontal scale.\n");
 	printf("Press home to reset the position and scale.\n");
-	printf("Press F7 to toggle interpolation.\n");
+	printf("Press F7 to toggle bars / smooth curve.\n");
 	printf("Press F8 to toggle clamping.\n");
-	printf("Press F9 to toggle drawing points.\n");
+	printf("Press F9 to toggle peak markers.\n");
+	printf("Click or drag the progress bar to seek.\n");
 	printf("Press q to exit.\n");
 	printf("Press p to toggle Play/Pause audio.\n");
 	printf("Press r to reload and play audio.\n");
-
-	
-	getData();
 
 	music.play();
 
@@ -474,6 +595,8 @@ int main(int argc, char *argv[])
 		glutSpecialFunc(special);
 		glutIdleFunc(moveWav);
 		glutKeyboardFunc(key);
+		glutMouseFunc(mouse);
+		glutMotionFunc(motion);
 		glutMainLoop();
 	}
 
